@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "nightmare_mobile_HomeIMG",
+  "project_id": "9a8adbde-b01a-4b79-9073-2b533aad7591"
+}
