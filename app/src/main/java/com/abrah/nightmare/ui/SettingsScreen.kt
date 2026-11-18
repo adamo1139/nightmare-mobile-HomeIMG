@@ -395,6 +395,7 @@ fun SettingsScreen(
             }
         }
         Page.MODELS -> Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            StudioOutlinedButton(onClick = { ctx.startActivity(android.content.Intent(ctx, com.abrah.nightmare.homeimg.HomeImgActivity::class.java)) }) { Text("HomeIMG") }
             // ⭐⭐⭐ **Where models live** ([com.abrah.nightmare.ModelStorage]) —
             // the user's ask, 2026-09-26: a folder a file picker can reach.
             // ⚠ Radios, the SAME [SourceRow] the download source below uses:

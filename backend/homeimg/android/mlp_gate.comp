@@ -1,0 +1,11 @@
+#version 450
+layout(local_size_x=64) in;
+layout(binding=0,std430) buffer Gate {float g[];};
+layout(binding=1,std430) readonly buffer Up {float u[];};
+layout(push_constant) uniform Shape {uint width;} s;
+void main(){
+    uint col=gl_GlobalInvocationID.x;
+    if(col>=s.width)return;
+    uint j=gl_WorkGroupID.y*s.width+col;
+    g[j]=g[j]/(1+exp(-g[j]))*u[j];
+}

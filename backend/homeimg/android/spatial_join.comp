@@ -1,0 +1,9 @@
+#version 450
+layout(local_size_x=64) in;
+layout(binding=0,std430) readonly buffer Head {vec2 head[];};
+layout(binding=2,std430) writeonly buffer Joined {vec2 joined[];};
+layout(push_constant) uniform Shape {uint dim,channel,first;} s;
+void main(){
+    uint r=gl_WorkGroupID.x,l=gl_LocalInvocationIndex;
+    joined[(s.first+r)*(s.dim/2)+s.channel*64+l]=head[r*64+l];
+}

@@ -1,0 +1,20 @@
+#version 450
+layout(local_size_x=64) in;
+layout(binding=0,std430) readonly buffer Input {float x[];};
+layout(binding=2,std430) writeonly buffer Patch {float packed[];};
+// first is measured in output pixels; input starts at the first source row needed for its halo.
+layout(push_constant) uniform Shape {uint side,scale,channels,first;} s;
+void main(){
+    uint c=gl_GlobalInvocationID.x;
+    if(c>=s.channels)return;
+    uint pixel=s.first+gl_WorkGroupID.y;
+    int side=int(s.side*s.scale);
+    int y=int(pixel)/side,x0=int(pixel)%side;
+    int base=max(0,int(s.first)/side-1)/int(s.scale);
+    uint dst=(gl_WorkGroupID.y*s.channels+c)*9;
+    for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx){
+        int r=y+dy,col=x0+dx;
+        packed[dst++]=r<0 || r>=side || col<0 || col>=side ? 0 :
+            x[((r/int(s.scale)-base)*int(s.side)+col/int(s.scale))*s.channels+c];
+    }
+}

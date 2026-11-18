@@ -1,0 +1,40 @@
+#version 450
+// One workgroup evaluates a token's 8 groups. Ties keep the lower expert id.
+layout(local_size_x=128) in;
+layout(binding=0,std430) readonly buffer Logits {float logits[];};
+layout(binding=1,std430) readonly buffer Bias {float bias[];};
+layout(binding=2,std430) writeonly buffer Routes {float routes[];};
+shared float rank[128],score[128],groups[8];
+void main(){
+    uint id=gl_LocalInvocationIndex,t=gl_WorkGroupID.x;
+    score[id]=1/(1+exp(-logits[t*128+id]));
+    rank[id]=score[id]+bias[id];
+    barrier();
+    if(id<8){
+        float a=-3.402823e38,b=a;
+        for(uint j=id*16;j<(id+1)*16;++j){
+            float v=rank[j];if(v>a){b=a;a=v;}else if(v>b)b=v;
+        }
+        groups[id]=a+b;
+    }
+    barrier();
+    if(id==0){
+        uint g0=0;
+        for(uint g=1;g<8;++g)if(groups[g]>groups[g0])g0=g;
+        uint g1=g0==0?1:0;
+        for(uint g=0;g<8;++g)if(g!=g0 && groups[g]>groups[g1])g1=g;
+        uint best[8];float sum=1e-20;
+        for(uint j=0;j<8;++j){
+            uint e=g0*16;float hi=-3.402823e38;
+            // Visit groups in the same stable order as Poziomka.
+            for(uint g=0;g<2;++g)for(uint k=0;k<16;++k){
+                uint c=(g==0?g0:g1)*16+k;
+                if(rank[c]>hi){hi=rank[c];e=c;}
+            }
+            best[j]=e;rank[e]=-3.402823e38;sum+=score[e];
+        }
+        for(uint j=0;j<8;++j){
+            routes[t*16+j]=float(best[j]);routes[t*16+8+j]=score[best[j]]/sum*2.5;
+        }
+    }
+}

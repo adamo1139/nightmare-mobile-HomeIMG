@@ -15,6 +15,16 @@ touch. No server, no account, no cloud.
   <a href="https://abrahampaulj.github.io/nightmare-mobile/demo/"><img src="media/demo-race.jpg" alt="21 text to image models racing on one Galaxy S25 Ultra, from Anything V5 in 3 seconds to Qwen Image 2.1 in 4 minutes 48; links to the 65 second demo video"></a>
 </p>
 
+## HomeIMG on Android
+
+Open **Settings → Models → HomeIMG** to import a compatible HomeIMG checkpoint from an Android folder. The importer copies the required files to private storage and switches the active checkpoint after the copy completes. A replacement import needs room for both copies during the transfer. The resolution slider selects a square output from 256 to 1024 pixels in increments of 16. The default is 256. Leave **Time shift** empty to use the checkpoint schedule or enter a positive value to override it. The screen accepts a positive and negative prompt, seed, step count and guidance scale, and saves a PNG through the Android file picker.
+
+The CPU path reads the original FP32 safetensors. A single-step CPU generation on emulated Android arm64 matched the Python reference to within one RGB8 level. Under **HomeIMG backend**, select CPU, Vulkan GPU, or HTP v73. **Test selected backend** runs a small projection before generation. Vulkan runs dense projections, the Poziomka expert router and packed INT8 expert products, text attention, Aurora cross-attention, fused feed-forward blocks, normalization, CFG and Euler updates. **Run self-attention on GPU** also offloads spatial rotary embeddings, attention scores, softmax and the value product. The VAE uses Vulkan for convolutions, group normalization and attention. The host schedules kernels, transfers intermediate tensors and handles remaining operations such as token packing and image conversion. Unsupported or failed operations can fall back to CPU. The screen reports step duration and host-observed accelerator times.
+
+To build the standalone test APK, run `tools/build_homeimg_android.sh` with Android NDK r29, Eigen 3.4 and nlohmann/json headers. Optionally run `tools/build_homeimg_v73.sh` on the replayed ABI 111 sources with Hexagon SDK 6.6.0.0. Set `JAVA_HOME`, `ANDROID_NDK_ROOT`, `ANDROID_JAR` (API 35) and `ANDROID_BUILD_TOOLS` (35.0.0), then run `tools/build_homeimg_preview_apk.sh`. The APK is written to `build/homeimg-preview/homeimg-preview.apk`.
+
+The full fork's side-by-side debug profile also requires the Foxlet release AAR. Run `python tools/stage_homeimg_base.py /path/to/upstream-v1.6.307.apk` with the original Nightmare release, then `./gradlew :app:assembleDebug -PhomeImgReleaseBase=true`. This profile reuses the published core for other model families. The HomeIMG screen invokes its own native library through JNI.
+
 ## Why it is worth a look
 
 - **21 models, one phone, real times** (a Galaxy S25 Ultra, above): SD 1.5 in 3 to 7 s, SDXL at 1024x1024 in

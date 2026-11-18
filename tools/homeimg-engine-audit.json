@@ -1,0 +1,190 @@
+{
+  "date": "2026-11-16",
+  "bead": "nightmare-mobile-HomeIMG-b9p.1",
+  "scope": "Source audit and host CPU build; no Android/HTP execution or HomeIMG generation claimed",
+  "repository_commit": "82acdbea8bdabc6fa71aef11b2df9d328561d6e2",
+  "source_pins": {
+    "local_dream_tag": "v3.0.0-alpha.4",
+    "local_dream": "18be9aa6e8365d6efb9601acf7c13f7147214aa7",
+    "stable_diffusion_cpp": "35a3d48b23581d2be7c3ad95e92f34662bb5f305",
+    "ggml": "f8758628270072da26ad44baf5e189d4695d9800"
+  },
+  "released_engine": {
+    "abi": 111,
+    "tag": "dit-engine-abi111-sched097",
+    "sha256": "91355de8de50304a67ed271964a86ebcf5ae8cc3f906d1df998a258037bcbe3d",
+    "zip_bytes": 23324021,
+    "ci_url": "https://github.com/AbrahamPaulJ/nightmare-mobile/actions/runs/43537069630",
+    "ci_head": "68521cc2226ca5944d6d8df5e2ce7fa141b74b80",
+    "exact_inputs_recovered": false,
+    "limitation": "Public API run metadata and release body retrieved; logs endpoint returned HTTP 403. Workflow defaults do not enumerate released patch set. Candidate replay is not certified identical to shipping engine."
+  },
+  "build": {
+    "baseline_cpu": "PASS: sd-cli compiled with GCC 11.4; --version reports commit 35a3d48",
+    "candidate_cpu": "PASS: reconstructed candidate sd-cli compiled and --version exits 0; source snapshots omit .git so embedded commit is unknown; provenance is in manifest.",
+    "configuration": [
+      "-G",
+      "Ninja",
+      "-DCMAKE_BUILD_TYPE=Release",
+      "-DSD_WEBP=OFF",
+      "-DSD_WEBM=OFF",
+      "-DSD_BUILD_EXAMPLES=ON",
+      "-DGGML_HEXAGON=OFF",
+      "-DGGML_NATIVE=OFF",
+      "-DGGML_CCACHE=OFF"
+    ],
+    "target": [
+      "sd-cli",
+      "-j",
+      "4"
+    ],
+    "native_android": "NOT RUN: Android SDK/NDK and Hexagon SDK not configured; no sdkmanager/hexagon-clang found on PATH",
+    "work_directory": "/tmp/homeimg-engine-audit",
+    "replay_script": "tools/replay_homeimg_audit.py --local-dream <initialized-clean-pin> --output <new-directory>",
+    "configure_command": "cmake -S <output>/app/src/main/cpp/3rdparty/stable-diffusion.cpp -B <build> -G Ninja -DCMAKE_BUILD_TYPE=Release -DSD_WEBP=OFF -DSD_WEBM=OFF -DSD_BUILD_EXAMPLES=ON -DGGML_HEXAGON=OFF -DGGML_NATIVE=OFF -DGGML_CCACHE=OFF",
+    "build_command": "cmake --build <build> --target sd-cli -j 4",
+    "replay_verification": "PASS: script applied all 85 patches; wrapper, header, pipeline and Hexagon host source byte-identical to manually reconstructed and CPU-built candidate."
+  },
+  "patch_replay": {
+    "status": "All 85 selected patches apply, including 2 upstream CMake-time patches; reconstructed header ABI 111",
+    "recipe": "tools/homeimg-engine-patches.json",
+    "not_shipping_provenance": true,
+    "conflicts": [
+      "033 full v85 changes arch cap, breaking context required by 034; use 033b skel-only variant for candidate.",
+      "090 rapid-moss and 094 lowres both replace the same sampler call; candidate excludes 090 and retains 094/095 as referenced by current engine comments.",
+      "001/002 are obsolete ABI variants; use 003 on alpha.4.",
+      "spike-* patches are not automatically included.",
+      "098 concerns v69 skel, not proof of Redmagic support."
+    ]
+  },
+  "model": {
+    "name": "HomeIMG-1.2B-PL-EN-epoch49",
+    "config_sha256": {
+      "model_index.json": "dc09d46232228e33d445143f013814222aa7dae2835f6fd62b76c84fa3a4e1ac",
+      "pipeline.py": "4831955cda7632a6b6ba886c829321eeeacfd7f6039b6f69a0be09a67f4a415d",
+      "transformer/config.json": "52d1253105dff842eb344a883aed3ae77b824b888c5cb46836b3dacdf3215d8a",
+      "text_encoder/config.json": "1be0dbfe9ad11909ec1db9735d0d11be670dda2af64a0316f668dc4912d8cbd9",
+      "vae/config.json": "117d85b1dc543cfd8abb6eacb838eba43c2743efa0930f47315a2221683fd166"
+    },
+    "tensor_payload_bytes": {
+      "transformer_F32": 4987209728,
+      "text_encoder_F32": 288420864,
+      "text_encoder_BF16": 569097984,
+      "text_encoder_I8": 3774873600,
+      "vae_F32": 249493388,
+      "vae_I64": 8
+    },
+    "expert_layout": {
+      "_wgu": "I8 [128,2048,640], gate then up",
+      "_wgu_s": "BF16 [128,640]",
+      "_wd": "I8 [128,320,2048]",
+      "_wd_s": "BF16 [128,2048]"
+    },
+    "vae_bn_comparison": {
+      "source": "128 FP32 means and variances read directly from safetensors payload; std=sqrt(var+1e-4)",
+      "max_abs_mean_delta_against_hardcoded_sdcpp": 4.883798360824643e-05,
+      "max_abs_std_delta_against_hardcoded_sdcpp": 4.983234701261274e-05,
+      "conclusion": "Close rounded constants, not exact model statistics; load buffers for parity."
+    }
+  },
+  "operator_matrix": [
+    {
+      "operation": "safetensors",
+      "cpu": "Parser F32/F16/BF16/I8 exists",
+      "htp_v73": "Container independent of execution backend",
+      "required_work": "Reuse parser; HomeIMG tensor mapping and configs required",
+      "evidence": "src/model_io/safetensors_io.cpp:safetensors_dtype_to_ggml_type"
+    },
+    {
+      "operation": "dense matmul",
+      "cpu": "CPU F32/F16/BF16 kernels available",
+      "htp_v73": "HTP accepts F32/F16/BF16 weights subject to shape/VTCM; BF16 storage converted to F16",
+      "required_work": "Compare against BF16 Python; do not claim identical arithmetic",
+      "evidence": "ggml/src/ggml-hexagon/ggml-hexagon.cpp:ggml_hexagon_supported_mul_mat"
+    },
+    {
+      "operation": "raw INT8 experts",
+      "cpu": "No ordinary I8 vec_dot entry in CPU type traits",
+      "htp_v73": "MUL_MAT and MUL_MAT_ID reject raw I8",
+      "required_work": "Implement exact per-output scaling, transpose/layout and selected-expert execution; CPU first or custom kernel, optional measured repack later",
+      "evidence": "ggml/src/ggml-cpu/ggml-cpu.c:type_traits_cpu; ggml-hexagon.cpp:ggml_hexagon_supported_mul_mat_id"
+    },
+    {
+      "operation": "MoE routing",
+      "cpu": "argsort_top_k/get_rows/sigmoid building blocks exist",
+      "htp_v73": "ARGSORT accepts F32 to I32 with rows <=16384; MUL_MAT_ID only Q4_0/Q4_1/Q8_0/IQ4_NL/MXFP4",
+      "required_work": "Existing GPT-OSS top-k+softmax router is NOT Poziomka sigmoid+selection bias+group routing+shared expert",
+      "evidence": "src/model/te/llm.hpp:MoE forward"
+    },
+    {
+      "operation": "RMSNorm and residual modulation",
+      "cpu": "Existing primitives",
+      "htp_v73": "F32/F16 norms with layout constraints; fused paths present",
+      "required_work": "Build Aurora shared time modulation + per-block table, not FLUX graph",
+      "evidence": "src/model/common/ggml_block.hpp; ggml-hexagon.cpp:ggml_hexagon_supported_unary"
+    },
+    {
+      "operation": "GQA / self / cross attention",
+      "cpu": "Existing attention helpers and masks",
+      "htp_v73": "Flash attention Q F16/F32, K/V F16 or Q8_0, mask F16, output ne[3]=1 and VTCM constraints",
+      "required_work": "Use sequential CFG initially; test 128-dim DiT/LM heads and 64-dim refiner heads, causal vs padding masks",
+      "evidence": "src/core/ggml_extend.cpp; ggml-hexagon.cpp:ggml_hexagon_supported_flash_attn_ext"
+    },
+    {
+      "operation": "RoPE",
+      "cpu": "NORMAL/NEOX and explicit arithmetic available",
+      "htp_v73": "NEOX/partial windows supported with F32 activation and aligned offset; fused QKNORM_ROPE also available",
+      "required_work": "Poziomka partial rotate-half differs from Aurora interleaved pairs; Aurora fractional 2D coordinates require explicit float frequencies, not integer rounding",
+      "evidence": "pipeline.py:build_rope_2d,PoziomkaAttention; ggml-hexagon.cpp:ggml_hexagon_supported_rope"
+    },
+    {
+      "operation": "SwiGLU",
+      "cpu": "Available on CPU",
+      "htp_v73": "Nightmare explicitly filters SWIGLU off HTP on v73",
+      "required_work": "Preserve existing filter; measure alternative composition only after parity",
+      "evidence": "app/src/main/java/com/abrah/nightmare/BackendProcess.kt:lowArchOpFilter"
+    },
+    {
+      "operation": "FP8",
+      "cpu": "Not required by HomeIMG source weights",
+      "htp_v73": "F8_E4M3 matmul rejected below v79",
+      "required_work": "Do not adopt newer-phone FP8 optimization for Redmagic v73",
+      "evidence": "ggml-hexagon.cpp:ggml_hexagon_supported_mul_mat"
+    },
+    {
+      "operation": "VAE FLUX2 small decoder",
+      "cpu": "32 channels and decoder width autodetection already exist",
+      "htp_v73": "Existing convolutions, with v73 CONV_2D_UPSCALE/CONCAT fallback filters",
+      "required_work": "Reuse decoder, map Diffusers names, load actual BN buffers and verify unpatchify",
+      "evidence": "src/model/vae/auto_encoder_kl.hpp:detect_decoder_ch,get_latents_mean_std,decode"
+    },
+    {
+      "operation": "Euler / CFG",
+      "cpu": "Existing flow scheduler and Euler implementation",
+      "htp_v73": "Host-side integration",
+      "required_work": "Add HomeIMG resolution/341.33 time grid and time embedding sin-before-cos, 1000*t and denominator 127; keep micro-conditioning denominator 128; negative_prompt empty per user decision",
+      "evidence": "src/runtime/denoiser.hpp; pipeline.py:timestep_embedding,micro_cond_embedding,_denoise"
+    },
+    {
+      "operation": "tokenizer / refiner",
+      "cpu": "Tokenizer infrastructure exists, no Poziomka family",
+      "htp_v73": "Tokenization host-side",
+      "required_work": "Original tokenizer.json; BOS=1 PAD=65535; 255+1 tokens, whitespace normalization, no Qwen template; custom four-block refiner",
+      "evidence": "src/model/te/llm.hpp:LLMArch; pipeline.py:_tokenize,AuroraLMTextEncoder"
+    }
+  ],
+  "integration_findings": [
+    "AuroraDenoiser and Poziomka absent from model detection, LLMArch, conditioning and diffusion runners.",
+    "App import assumes llm.gguf and borrows shared family parts; HomeIMG must have private complete package and no accidental Qwen donor.",
+    "Backend core and libdit_engine ABI must agree; existing numeric ABI alone does not advertise new HomeIMG support. Pin a HomeIMG-capable engine and hashes, with matching core.",
+    "CPU Poziomka followed by HTP DiT is a proposed first integration, not a measured performance result. CPU expert execution still needs implementation.",
+    "Default v73 DIT_MAX_VRAM is about 2 GiB; 16 GB system RAM does not remove FastRPC map limits. Full F32 denoiser is about 4.99 GB; even F16 weight payload is about 2.49 GB before activations: graph cuts/streaming required for NPU.",
+    "Disable optional Spectrum/lowres approximations for initial parity; avoid keeping LM and DiT weights resident together."
+  ],
+  "remaining_verification": [
+    "Recover or explicitly select and freeze exact shipping-compatible engine/core patch recipe; full Android/v73 build in b9p.17.",
+    "Run actual Redmagic probes and HMX self-test in b9p.2; no simulated v73 run substitutes for target hardware.",
+    "Implement and compare Poziomka INT8 numerics, all model operators, VAE and full pipeline in existing implementation beads."
+  ],
+  "decision": "Architecture is a viable implementation candidate, not demonstrated HomeIMG support. Start CPU Poziomka exactness and HTP Aurora graph cuts; keep safetensors. Native release build provenance/toolchain and target-device execution remain explicit gates."
+}

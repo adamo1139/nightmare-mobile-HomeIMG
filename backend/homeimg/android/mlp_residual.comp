@@ -1,0 +1,12 @@
+#version 450
+layout(local_size_x=64) in;
+layout(binding=0,std430) readonly buffer Input {float x[];};
+layout(binding=1,std430) readonly buffer Params {float p[];};
+layout(binding=2,std430) buffer Output {float y[];};
+layout(push_constant) uniform Shape {uint width;} s;
+void main(){
+    uint col=gl_GlobalInvocationID.x;
+    if(col>=s.width)return;
+    uint j=gl_WorkGroupID.y*s.width+col;
+    y[j]=x[j]+p[3*s.width+col]*y[j];
+}

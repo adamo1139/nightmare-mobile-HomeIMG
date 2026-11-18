@@ -97,3 +97,9 @@ target_include_directories(nmqnn PRIVATE ${QNN_INC} ${QNN_INC}/QNN)
 target_link_libraries(nmqnn android log dl)
 
 target_compile_options(nmqnn PRIVATE -O2 -fvisibility=hidden -Wall)
+
+# HomeIMG is independent of the downloaded DiT engine and its device-specific skels.
+# A checkout prepared by build_homeimg_android.sh packages it alongside the other JNI targets.
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../../../build/homeimg-headers/Eigen/Dense")
+    add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../../../../backend/homeimg/android" homeimg)
+endif()

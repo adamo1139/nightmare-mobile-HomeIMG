@@ -1,0 +1,32 @@
+#version 450
+// FP32 fast path for complete 32x32 tiles and K divisible by 16.
+// Each invocation accumulates 4 rows by 4 output channels in registers.
+layout(local_size_x=8,local_size_y=8) in;
+layout(binding=0,std430) readonly buffer Input { vec4 x[]; };
+layout(binding=1,std430) readonly buffer Weights { vec4 w[]; };
+layout(binding=2,std430) writeonly buffer Output { vec4 y[]; };
+layout(push_constant) uniform Shape { uint tokens,width,channels; } shape;
+shared vec4 xt[32][4];
+shared vec4 wt[32][4];
+void main(){
+    uint row=gl_WorkGroupID.y*32, channel=gl_WorkGroupID.x*32;
+    uint r=gl_LocalInvocationID.y*4,c=gl_LocalInvocationID.x*4;
+    uint lane=gl_LocalInvocationIndex, stride=shape.width/4;
+    vec4 sums[4]=vec4[4](vec4(0),vec4(0),vec4(0),vec4(0));
+    for(uint k=0;k<stride;k+=4){
+        for(uint j=lane/4;j<32;j+=16){
+            xt[j][lane%4]=x[(row+j)*stride+k+lane%4];
+            wt[j][lane%4]=w[(channel+j)*stride+k+lane%4];
+        }
+        barrier();
+        for(uint i=0;i<4;++i){
+            vec4 a=wt[c][i],b=wt[c+1][i],d=wt[c+2][i],e=wt[c+3][i];
+            for(uint j=0;j<4;++j){
+                vec4 v=xt[r+j][i];
+                sums[j]+=vec4(dot(v,a),dot(v,b),dot(v,d),dot(v,e));
+            }
+        }
+        barrier();
+    }
+    for(uint j=0;j<4;++j)y[(row+r+j)*(shape.channels/4)+(channel+c)/4]=sums[j];
+}

@@ -31,9 +31,15 @@ val keystoreProps = Properties().apply {
 }
 
 
+val homeImgReleaseBase = providers.gradleProperty("homeImgReleaseBase").orNull == "true"
+
 android {
     namespace = "com.abrah.nightmare"
     compileSdk = 35
+    if (homeImgReleaseBase) {
+        ndkVersion = "29.0.14206865"
+        buildToolsVersion = "35.0.0"
+    }
 
     defaultConfig {
         applicationId = "com.abrah.nightmare"
@@ -65,7 +71,7 @@ android {
         // and does not compile without one. â­ STATIC rather than shared so the
         // STL is linked into libnmqnn.so and no `libc++_shared.so` has to be
         // packaged -- libnmjs.so is C and links none of it either way.
-        externalNativeBuild {
+        if (!homeImgReleaseBase) externalNativeBuild {
             cmake { arguments += "-DANDROID_STL=c++_static" }
         }
     }
@@ -75,7 +81,7 @@ android {
     // executable, and its tree is CC BY-NC and uncommittable). libnmjs.so is
     // ours plus MIT QuickJS, so it is a normal Gradle native build -- and that
     // means it cannot silently go stale the way a staged binary can.
-    externalNativeBuild {
+    if (!homeImgReleaseBase) externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
             version = "3.22.1"
@@ -122,6 +128,7 @@ android {
         // Ã¢â€¡â€™ Revisit the moment the dex grows again; unminified is a convenience,
         // not a principle, and stack traces are what it buys.
         debug {
+            if (homeImgReleaseBase) applicationIdSuffix = ".homeimg"
             isMinifyEnabled = false
         }
         release {
@@ -272,4 +279,19 @@ afterEvaluate {
         filter { includeTestsMatching("*ResultsFullscreenTest") }
     }
     base.configure { finalizedBy(isolated) }
+}
+
+android.sourceSets.getByName("main").assets.srcDir(rootProject.file("build/homeimg-v73/assets"))
+android.sourceSets.getByName("main").jniLibs.srcDir(rootProject.file("build/homeimg-v73/jniLibs"))
+
+if (homeImgReleaseBase) {
+    android.sourceSets.getByName("main").assets.srcDir(rootProject.file("build/homeimg-release-base/assets"))
+    android.sourceSets.getByName("main").jniLibs.srcDir(rootProject.file("build/homeimg-release-base/jniLibs"))
+    tasks.named("preBuild").configure {
+        doFirst {
+            check(rootProject.file("build/homeimg-release-base/jniLibs/arm64-v8a/libhomeimg_cpu.so").isFile) {
+                "Stage the verified upstream base and HomeIMG library with tools/stage_homeimg_base.py"
+            }
+        }
+    }
 }

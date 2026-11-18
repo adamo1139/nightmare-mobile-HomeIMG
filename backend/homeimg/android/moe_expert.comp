@@ -1,0 +1,17 @@
+#version 450
+layout(local_size_x=64) in;
+layout(binding=0,std430) readonly buffer Input {float x[];};
+layout(binding=1,std430) readonly buffer Weights {uint packed[];};
+layout(binding=2,std430) writeonly buffer Out {float y[];};
+layout(push_constant) uniform Shape {uint width,cols;} s;
+void main(){
+    uint col=gl_GlobalInvocationID.x,row=gl_WorkGroupID.y;
+    if(col>=s.cols)return;
+    float value=0;
+    for(uint k=0;k<s.width;++k){
+        uint i=k*s.cols+col;
+        int weight=bitfieldExtract(int(packed[i/4]),int((i%4)*8),8);
+        value+=x[row*s.width+k]*float(weight);
+    }
+    y[row*s.cols+col]=value*uintBitsToFloat(packed[s.width*s.cols/4+col]);
+}

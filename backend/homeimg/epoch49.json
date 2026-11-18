@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "model": "cpral/HomeIMG-1.2B-PL-EN-epoch49",
+  "revision": "8fdd3a27ddc7e36dea6ebb81b47860b60c66da02",
+  "files": {
+    "model_index.json": {
+      "bytes": 333,
+      "sha256": "dc09d46232228e33d445143f013814222aa7dae2835f6fd62b76c84fa3a4e1ac"
+    },
+    "pipeline.py": {
+      "bytes": 42207,
+      "sha256": "4831955cda7632a6b6ba886c829321eeeacfd7f6039b6f69a0be09a67f4a415d"
+    },
+    "text_encoder/config.json": {
+      "bytes": 725,
+      "sha256": "1be0dbfe9ad11909ec1db9735d0d11be670dda2af64a0316f668dc4912d8cbd9"
+    },
+    "text_encoder/diffusion_pytorch_model.safetensors": {
+      "bytes": 4632421120,
+      "sha256": "91f7069b51f0ac7bf0b40731d1a4e42280684c17b18ca684c86ccde3510e825c"
+    },
+    "text_encoder/pipeline.py": {
+      "bytes": 42207,
+      "sha256": "4831955cda7632a6b6ba886c829321eeeacfd7f6039b6f69a0be09a67f4a415d"
+    },
+    "tokenizer/special_tokens_map.json": {
+      "bytes": 100,
+      "sha256": "5af4e5f134b69b5f2d226cbef37e08c9eec9efa88c64f084175ac1d2f796adc5"
+    },
+    "tokenizer/tokenizer.json": {
+      "bytes": 3705401,
+      "sha256": "536b4dffbed89b3741d008a06c4308a42b3e3e969b92c7e3c6fd0ca1f40d04b1"
+    },
+    "tokenizer/tokenizer_config.json": {
+      "bytes": 176,
+      "sha256": "3038345c2ac7c8523b217790918ce5d43eb88c5be97748589541fd0f39a6ef92"
+    },
+    "transformer/config.json": {
+      "bytes": 330,
+      "sha256": "52d1253105dff842eb344a883aed3ae77b824b888c5cb46836b3dacdf3215d8a"
+    },
+    "transformer/diffusion_pytorch_model.safetensors": {
+      "bytes": 4987226400,
+      "sha256": "8a7020dad22917b27b13f9b740067790a24c3caaf7faecb82c665c77d8ada002"
+    },
+    "transformer/pipeline.py": {
+      "bytes": 42207,
+      "sha256": "4831955cda7632a6b6ba886c829321eeeacfd7f6039b6f69a0be09a67f4a415d"
+    },
+    "vae/config.json": {
+      "bytes": 899,
+      "sha256": "117d85b1dc543cfd8abb6eacb838eba43c2743efa0930f47315a2221683fd166"
+    },
+    "vae/diffusion_pytorch_model.safetensors": {
+      "bytes": 249521372,
+      "sha256": "377e8be52f1971978b0af970f2c7db9e40e4e0c9e2da0785ec5d0de461e51f04"
+    }
+  }
+}

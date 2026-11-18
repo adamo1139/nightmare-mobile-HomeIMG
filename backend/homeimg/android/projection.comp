@@ -1,0 +1,32 @@
+#version 450
+// Each workgroup multiplies a 16x16 input tile by a transposed weight tile.
+layout(local_size_x=8, local_size_y=8) in;
+layout(binding=0,std430) readonly buffer Input { float x[]; };
+layout(binding=1,std430) readonly buffer Weights { float w[]; };
+layout(binding=2,std430) writeonly buffer Output { float y[]; };
+layout(push_constant) uniform Shape { uint tokens, width, channels; } shape;
+shared float inputs[16][16];
+shared float weights[16][16];
+void main() {
+    uint lx=gl_LocalInvocationID.x, ly=gl_LocalInvocationID.y;
+    uint firstToken=16*gl_WorkGroupID.y, firstChannel=16*gl_WorkGroupID.x;
+    vec2 a=vec2(0), b=vec2(0);
+    for(uint k=0;k<shape.width;k+=16) {
+        for(uint j=ly;j<16;j+=8) for(uint i=lx;i<16;i+=8) {
+            inputs[j][i]=firstToken+j<shape.tokens && k+i<shape.width ? x[(firstToken+j)*shape.width+k+i] : 0;
+            weights[j][i]=firstChannel+j<shape.channels && k+i<shape.width ? w[(firstChannel+j)*shape.width+k+i] : 0;
+        }
+        barrier();
+        for(uint i=0;i<16;++i) {
+            vec2 pair=vec2(weights[lx][i],weights[lx+8][i]);
+            a+=inputs[ly][i]*pair;
+            b+=inputs[ly+8][i]*pair;
+        }
+        barrier();
+    }
+    uint t=firstToken+ly,c=firstChannel+lx;
+    if(t<shape.tokens && c<shape.channels)y[t*shape.channels+c]=a.x;
+    if(t<shape.tokens && c+8<shape.channels)y[t*shape.channels+c+8]=a.y;
+    if(t+8<shape.tokens && c<shape.channels)y[(t+8)*shape.channels+c]=b.x;
+    if(t+8<shape.tokens && c+8<shape.channels)y[(t+8)*shape.channels+c+8]=b.y;
+}

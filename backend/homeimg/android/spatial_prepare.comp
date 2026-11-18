@@ -1,0 +1,25 @@
+#version 450
+layout(local_size_x=64) in;
+layout(binding=0,std430) readonly buffer Raw {float raw[];};
+layout(binding=1,std430) readonly buffer Weights {float weight[];};
+layout(binding=2,std430) writeonly buffer Packed {float packed[];};
+layout(push_constant) uniform Shape {uint side,dim,head,reference;} s;
+shared vec2 partial[64];
+void main(){
+    uint row=gl_WorkGroupID.x,lane=gl_LocalInvocationIndex,j=2*lane;
+    uint src=row*3*s.dim+s.head*128+j;
+    vec2 q=vec2(raw[src],raw[src+1]), k=vec2(raw[src+s.dim],raw[src+s.dim+1]);
+    partial[lane]=vec2(dot(q,q),dot(k,k));
+    barrier();
+    for(uint span=32;span>0;span/=2){if(lane<span)partial[lane]+=partial[lane+span];barrier();}
+    vec2 inv=inversesqrt(partial[0]/128.0+1e-6);
+    q*=inv.x*vec2(weight[j],weight[j+1]);k*=inv.y*vec2(weight[128+j],weight[129+j]);
+    float pos=float(lane<32?row/s.side:row%s.side);
+    if(s.reference>0)pos=(pos+.5)*float(s.reference)/float(s.side)-.5;
+    float angle=pos/pow(10000.0,float(lane%32)/32.0),c=cos(angle),sn=sin(angle);
+    uint tokens=s.side*s.side,dst=row*128+j, count=tokens*128;
+    packed[dst]=q.x*c-q.y*sn;packed[dst+1]=q.x*sn+q.y*c;
+    packed[count+dst]=k.x*c-k.y*sn;packed[count+dst+1]=k.x*sn+k.y*c;
+    packed[2*count+j*tokens+row]=raw[src+2*s.dim];
+    packed[2*count+(j+1)*tokens+row]=raw[src+2*s.dim+1];
+}

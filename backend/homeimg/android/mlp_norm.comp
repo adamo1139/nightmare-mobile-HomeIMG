@@ -1,0 +1,18 @@
+#version 450
+layout(local_size_x=64) in;
+layout(binding=0,std430) readonly buffer Input {float x[];};
+layout(binding=1,std430) readonly buffer Params {float p[];};
+layout(binding=2,std430) writeonly buffer Output {float y[];};
+layout(push_constant) uniform Shape {uint width;} s;
+shared float partial[64];
+void main(){
+    uint lane=gl_LocalInvocationIndex,base=gl_WorkGroupID.x*s.width;
+    float sum=0;
+    for(uint j=lane;j<s.width;j+=64)sum+=x[base+j]*x[base+j];
+    partial[lane]=sum;
+    barrier();
+    for(uint k=32;k>0;k/=2){if(lane<k)partial[lane]+=partial[lane+k];barrier();}
+    float inv=inversesqrt(partial[0]/s.width+1e-6);
+    for(uint j=lane;j<s.width;j+=64)
+        y[base+j]=(x[base+j]*inv*p[j])*(1+p[s.width+j])+p[2*s.width+j];
+}

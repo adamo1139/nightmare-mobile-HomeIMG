@@ -1,0 +1,27 @@
+cmake_minimum_required(VERSION 3.18)
+project(homeimg_android LANGUAGES CXX)
+if(NOT ANDROID OR NOT ANDROID_ABI STREQUAL "arm64-v8a")
+    message(FATAL_ERROR "HomeIMG Android requires the arm64-v8a NDK toolchain")
+endif()
+set(HOMEIMG_HEADERS "${CMAKE_CURRENT_LIST_DIR}/../../../build/homeimg-headers" CACHE PATH "Directory containing Eigen and nlohmann headers")
+if(NOT EXISTS "${HOMEIMG_HEADERS}/Eigen/Dense" OR NOT EXISTS "${HOMEIMG_HEADERS}/nlohmann/json.hpp")
+    message(FATAL_ERROR "Prepare headers with tools/build_homeimg_android.sh as described in its usage")
+endif()
+add_library(homeimg_cpu SHARED ../homeimg.cpp homeimg_jni.cpp)
+target_compile_features(homeimg_cpu PRIVATE cxx_std_17)
+target_include_directories(homeimg_cpu PRIVATE "${HOMEIMG_HEADERS}")
+target_compile_options(homeimg_cpu PRIVATE -O3 -fopenmp)
+target_link_options(homeimg_cpu PRIVATE -fopenmp -static-openmp)
+
+target_link_libraries(homeimg_cpu PRIVATE log dl)
+
+find_program(HOMEIMG_GLSLC glslc HINTS "${CMAKE_ANDROID_NDK}/shader-tools/linux-x86_64" "${CMAKE_ANDROID_NDK}/shader-tools/darwin-x86_64" "${CMAKE_ANDROID_NDK}/shader-tools/windows-x86_64" REQUIRED NO_CMAKE_FIND_ROOT_PATH)
+foreach(kernel projection projection_aligned attention_softmax mlp_norm mlp_gate mlp_residual vae_patch spatial_prepare spatial_join row_update moe_expert vae_group moe_route)
+    add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${kernel}.inc"
+        COMMAND "${HOMEIMG_GLSLC}" -O -mfmt=num "${CMAKE_CURRENT_SOURCE_DIR}/${kernel}.comp" -o "${CMAKE_CURRENT_BINARY_DIR}/${kernel}.inc"
+        DEPENDS "${kernel}.comp" VERBATIM)
+    target_sources(homeimg_cpu PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/${kernel}.inc")
+endforeach()
+target_sources(homeimg_cpu PRIVATE vulkan.cpp)
+target_include_directories(homeimg_cpu PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+target_link_libraries(homeimg_cpu PRIVATE vulkan)

@@ -1,0 +1,534 @@
+{
+  "status": "audit candidate, not an exact reconstruction of released binaries",
+  "source_pins": {
+    "local_dream_tag": "v3.0.0-alpha.4",
+    "local_dream": "18be9aa6e8365d6efb9601acf7c13f7147214aa7",
+    "stable_diffusion_cpp": "35a3d48b23581d2be7c3ad95e92f34662bb5f305",
+    "ggml": "f8758628270072da26ad44baf5e189d4695d9800"
+  },
+  "apply_order": [
+    {
+      "patch": "003-lora-on-alpha3-abi105.patch",
+      "sha256": "54e2b1e43f1c555584e82beac780c6759ca44d331561c266529631e871b1538c",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "004-unet-stride2-conv.sdcpp.patch",
+      "sha256": "7a259902322b81fadebe5d303fb6a2907c4b4eeec859e6d9e5e06f932462b874",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "005-controlnet-htp.sdcpp.patch",
+      "sha256": "76c2efd9c1d8f0aa20a6230c77b18c801904a4d4c83901be6802d5b5d54521fe",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "006-max-vram-env.patch",
+      "sha256": "5070f343b3de09e8e3b379b6ad48564f4dcaa447c64b9821cc70cbfdf8cccb53",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "007-qwen21-graph-cut.sdcpp.patch",
+      "sha256": "723d993755f1b5ccdb4bb0fe8ba801bd89d49545340bc3432a52b42096fd5ac2",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "008-anima-fused-ops.sdcpp.patch",
+      "sha256": "58ad539c4da4821af6be9dd76c2b1c9807cbaa9b54643ad6cdc4358f6cc90606",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "009-wan-fused-ops.sdcpp.patch",
+      "sha256": "96f5024205b4dfb6c542ab3b656603775c9bb8bb989ab51a094217b0e511cd6a",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "010-wan-te-unpadded.sdcpp.patch",
+      "sha256": "28dfe3d86865229d7b002b5eeeb4b545a3db00df149f99909c453a7c080c76dd",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "012-hexagon-conv2d-batch.ggml.patch",
+      "sha256": "0a3e44a28726d07da9af14714c4d0e2806b282215b46df31870fa2ed9dbd6f4a",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "013-wan22-t2v-one-timestep.sdcpp.patch",
+      "sha256": "a1bdc65836407cbdf066b4c46e6ef586dddb9126f6c7c78773f3587e9fe95959",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "014-dump-video-latent.sdcpp.patch",
+      "sha256": "83fd04a57844eb6f8cc1d43b8ea0d3e74d5ff723263b3788b5df1767b4a7a4fb",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "016-wan22-i2v-split-modulation.sdcpp.patch",
+      "sha256": "046f8ab9064f8b9d72440f6b146e7e199f1495bfb991949c0947961347f165f5",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "017-video-abi106.patch",
+      "sha256": "ff572a20999db503df4b5635636e64c1c185b05a62c3e283508be3752d23a1ec",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "018-vae-temporal-tile-cut.sdcpp.patch",
+      "sha256": "d03d85e30a1b87f4ea10b0b7d2b83aebe6605380baa38d1ca16f74e292427d72",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "019-wan22-fun-control.sdcpp.patch",
+      "sha256": "60a8445fb0c161bf87f57737526da52358a777c689e0ee22afea344683f219df",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "020-video-abi107-fun-control.patch",
+      "sha256": "d92f18369b2c06cc9ada0ba8a2e4d2ac517abc17b927e82f0135b6129d9d5114",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "021-ref-max-pixels-env.patch",
+      "sha256": "78f3b5f285bd23c6fb8a72ad2f058462dff8e2f376ed7e8599138a58196bc400",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "022-iris-3b.sdcpp.patch",
+      "sha256": "4da6b7633082775efbe32b0a8976bb471d44c61df2d2c9a4a5762ae6939ecc0f",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "024-taehv-chunked-encode.sdcpp.patch",
+      "sha256": "da83246e4467d548627e6fe35418fdffdb4dac417d6773eaaa5ae866400a6b87",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "025-zimage-htp-out-scale.sdcpp.patch",
+      "sha256": "4109faee7144da5949dd1bcb53d3c4e0e2e04fd05828881683ca5f32340ef7f4",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "027-lokr-factored-forward.sdcpp.patch",
+      "sha256": "820677ea902b15c55cc5a4b55c0157b0f11dbdf06e9866567d6089a45e638ad5",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "028-moss-image.sdcpp.patch",
+      "sha256": "682124923a7db8040f059c36a6333742dd8b895387cc6f50c71d8d723d7488f0",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "029-ideogram4-fused-rope.sdcpp.patch",
+      "sha256": "47a36e6c2e1a0c060c422549db205a7e654fba9940bf06dc5de87234293c3d0a",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "030-hexagon-hmx-selftest.ggml.patch",
+      "sha256": "6f668ecc1f202cc494abb4cd4552de65263efe53c083d79aef018c7cf19ac94c",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "031-hexagon-concat-contig.ggml.patch",
+      "sha256": "771721924ed58af152cfb049b53bdf0e7fc9b46448fcc45f73bf4e93fc7febf0",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "032-dit-scheduler-abi108.patch",
+      "sha256": "d72778253dfc11071cf6085d9b0eb7e6b00fac9f435a0c47b211ba146f7f352d",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "033b-hexagon-v85-skel-only.ggml.patch",
+      "sha256": "4826eef8b8012769bda6e292136eeec479b55d26e388e91e7241984e15770b46",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "034-hexagon-v69-skel.ggml.patch",
+      "sha256": "02ef73d165e5f51f7a53e495b9d96772be5abba68abd56a01485f5adf0ce1382",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "035-moss-fused-rope.sdcpp.patch",
+      "sha256": "6878034d99ea0c21850bd5004ea9f320716dd5ccbd29fa8c2569574fc7a9a57a",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "036-hexagon-cpy-strided-hvx.ggml.patch",
+      "sha256": "e15d6db2e6a77db28a859880b8e0ca1a6f5051200b5f89d2e965296758d2b96c",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "037-iris-fused-rope.sdcpp.patch",
+      "sha256": "a0008b869066ed90570e523832466a8a96e7580d700075bdc0f823eccab79dbb",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "038-wan-patch-embed-matmul.sdcpp.patch",
+      "sha256": "96e653bade02363e58a7d8578660303648e6a31f3c8d1f9b81b7cf802a99ce01",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "039-hexagon-fa-prefetch-early.ggml.patch",
+      "sha256": "cc9efb295efefb43813c06e1f2cdd56f7f6f031400d6818c55c0c3f6e72bd38c",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "040-hexagon-fa-softmax-cubic-exp.ggml.patch",
+      "sha256": "c363b064a4ab2274b53cb3ea381722e4fb7c8cda7a38ce339a4ff4eca69a241d",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "041-hexagon-fa-chunk-env.ggml.patch",
+      "sha256": "51117a8457d985a2734a989c94d20cb06bbad586e9737eacd87998902fa0ff63",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "042-flux3-klein.sdcpp.patch",
+      "sha256": "0592be12814a46e9a469c728384a2203685e8aa91f955649c4228bab0138a27b",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "043-flux3-fused-rope.sdcpp.patch",
+      "sha256": "5780baaee627919277c96bc4831e1e97924670ccd5ffe21d6aed22b33da6f91e",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "044-wan-a14b-moe-env.patch",
+      "sha256": "9fd5853fb20987792c34a5e1e396305ddad4056571c642d6bbfbde93a8e30ec5",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "045-flux3-htp-matmul-scale.sdcpp.patch",
+      "sha256": "a43404e9567ae284724ef498b9d0eb72b0e5276cb531d9435e56bf9882cd009b",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "046-wan-token-chunked-activations.sdcpp.patch",
+      "sha256": "5244d586b80b0949ec30d0bd5d1c334b7bc81f94725aa5a1f6ebe6c7f205903e",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "047-moss-image-edit-refs.sdcpp.patch",
+      "sha256": "ace048fdff34ca9c157b34287a8fbd6e21d3b5bbfef10761d6a7b24ac45fc0d3",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "048-dit-ref-preset-per-model.patch",
+      "sha256": "d1c3d24c7050c6c1f14ad2784ae7c4aaaa9f5ea5b5c0022d367217858367718a",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "049-wan-high-noise-lora-prefix.sdcpp.patch",
+      "sha256": "f62ffc5896b6feb35641c9e8e0d70a75b3b855fee5558780bffdfc9fd68429f5",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "050-segment-weight-preload.sdcpp.patch",
+      "sha256": "912935376f64367972af795c5b8259b95ea1ae3e2c01b4effbb9e7b8a5bf2bb9",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "051-hexagon-buffer-cpy-tensor.ggml.patch",
+      "sha256": "71e82211d0c6a103a8c423fe6823f039a13ba145531674c7578e977ba91ba067",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "052-taehv-encode-small-chunks.sdcpp.patch",
+      "sha256": "d313a0ca905cfaffb799e3b63c64e5cccd78fb00cfa2f54455eff3fad5ff5d2f",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "053-vae-tiles-never-seam.sdcpp.patch",
+      "sha256": "61fc6728767b7adc05db84352c077038996e34207504dc98e383bef2c5174e03",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "054-wan-animate.sdcpp.patch",
+      "sha256": "8db9344ed4436937a5a60878192e04e2f8c0e3db46fff0dc4725b36a3d8858b0",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "055-flux3-graph-cut.sdcpp.patch",
+      "sha256": "ac2a321b731f5e8836969dafc6b122cc58e1e2f8d1656fc6c2d1f5dc3a48ae9a",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "056-fibo2-edit.sdcpp.patch",
+      "sha256": "8a2288f087d69e0cd345f4664efac0b2f916d00e49b13093bdd9f188494d8574",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "057-fibo2-htp.sdcpp.patch",
+      "sha256": "46103fbce800e91c8e5ee23dbdfbed4b1ba603f12a75df0359104c203551c28a",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "060-graph-cut-use-counts.sdcpp.patch",
+      "sha256": "c95e5b70158c251e7419d01bf596ee240f47d76f461d2e1725a144f743bc52fa",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "061-hexagon-repack-threaded.ggml.patch",
+      "sha256": "0e463989771dece1db089518f7245ac596234cbbfd4a7f1a5b8de548896b36ba",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "062-loader-pread-chunks.sdcpp.patch",
+      "sha256": "2e28890925217632a9f9f5f5d24ac0eec372ba41f4375ba5750dde9c4aa891e1",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "063-hexagon-qknorm-rope-blocks.ggml.patch",
+      "sha256": "d65fe7d3c72908bf0653fafea672c967fff36618412468c9e88b0d549cbcd318",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "064-cache-buffer-reuse.sdcpp.patch",
+      "sha256": "b82ba8204aedba9a388ef5d06342ba7dc572240f1fdf56f26dc737cde6f8e6eb",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "065-hexagon-qknorm-rope-l2fetch.ggml.patch",
+      "sha256": "224d119e9c91549776cceb2fa17e07492784348bfbce442484c3d05656a15897",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "067-opencl-mali-old-drivers.ggml.patch",
+      "sha256": "6ba1fb95a410cf6b0415fa75ed8627616456580a5b1d7c8772dc6fe824261c65",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "068-wan-lora-expert-prefix.patch",
+      "sha256": "182c9d2282495cbe9f83fbeafacbfa9449b0bbc13c2029bbd71abebed1a9d4c2",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "069-hexagon-binary-wide-rows.ggml.patch",
+      "sha256": "4d7e94cd03758f1c487041d9038de90290a05b1abbebffc926b88b03b179360d",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "070-minimax-h3-audio-vae-on-te-backend.sdcpp.patch",
+      "sha256": "b50098c434f92f238ca724420783e1242faa0e950f47041ee2888bdbb2ea7f27",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "071-minimax-h3-fused-partial-rope.sdcpp.patch",
+      "sha256": "56f7239bcce6fe4967fcfda3a6e93b3a8f5b9e79ae5a3f189d5973c9c1a4a99a",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "072-minimax-h3-curve-knots.sdcpp.patch",
+      "sha256": "c5a38a8beb41895f6832fbf90e7bb83e0bd6d2eed541b2ed0cf55678189edbe6",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "073-minimax-h3-htp-matmul-scale.sdcpp.patch",
+      "sha256": "80b707a15359e94de65373c57a81056a742d82bc8f55ec712e9c0ebb5c9d66be",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "074-minimax-h3-vae-fused-rope.sdcpp.patch",
+      "sha256": "3357e1bf3f2cf95a5aefcfea50dc96ab2f397ef81c5571ceeb9a3dde8837fc3e",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "075-minimax-h3-vae-flash-attn.sdcpp.patch",
+      "sha256": "33e2108286e1f169d8f5356b19d26e4d1c337dce6ece399c514760058bf5f10e",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "076-minimax-h3-clipproj.sdcpp.patch",
+      "sha256": "436891781841c9e7efa2c13b88f6d2a47b7c02ebb4b3f89183b23d4aa42a1746",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "078-h3-audio-abi110.patch",
+      "sha256": "9ab54488c22ef915a2d6f404858b5f20fac69544a38e2535be1d27ecaaf72e57",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "079-minimax-h3-vae-encode-one-frame.sdcpp.patch",
+      "sha256": "09499830727ca2d6baa1a384fa4cafbec16a4c161d7e7555ee41135aea885d59",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "080-opencl-yield-to-screen.ggml.patch",
+      "sha256": "a150085ec6a6b48a83bffce230b6f50ea1b84b69d78855c58aa1b02d052bc0e1",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "081-opencl-qkv-preprocess-pr28446.ggml.patch",
+      "sha256": "9e3ecb42177de462957e1a42f136d8fb83b98dd0c60251ece1855c72341d58e3",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "085-opencl-adreno-gemm-dst-view-offs.ggml.patch",
+      "sha256": "44e89db5a2c5bd314c0b643b16c9011fdc896ccd34b62962ff185914b01935d8",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "086-esrgan-upscale-abi111.patch",
+      "sha256": "c96b0947193178f273eb0c39c2e4e255d078d534eaabd10fb128b907419beb74",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "087-esrgan-pixel-unshuffle.sdcpp.patch",
+      "sha256": "79ada31ab4985e2f1f14a346616190dfb7074ff2c41b61aea1fd79ea305fd854",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "088-hexagon-cpy-interleave2.ggml.patch",
+      "sha256": "d80eb6dbe1e7a0f9b1a0a8acefe312ca46331abb72a8fc30a5902340da832cf1",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "089-loader-poll-1ms.sdcpp.patch",
+      "sha256": "fddb533e2723070b70d487b74635cfbd2e940fa76f9e82a4af62e7677139f01f",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "091-hexagon-cpy-interleave2-4d.ggml.patch",
+      "sha256": "dd1452e0c6b15e552aa602064e74e1c68868aec938a1119be9baff5deeea0b16",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "092-flux1-env.patch",
+      "sha256": "8d48b2231283e165fe060b94670c815ab8d9b81fed273b9786483a63a6bdc712",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "093-moss-lora-fused-qkv.sdcpp.patch",
+      "sha256": "5ff6ee9a6ad09f5a2e70575f22304d39dfd572be4cae6f77e8c49b6054cda841",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "094-lowres-spectrum-spike.sdcpp.patch",
+      "sha256": "274d237ec495bd7644a6dc3a4d18ef7e7570bcd9bb05b5ada717194d7a1467f3",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "095-keep-runners-spike.sdcpp.patch",
+      "sha256": "cc79aff905967584ccf64eaf988bed83c153fd89d6aa636814e88a24294d53dc",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "097-schedules-lq-beta57-radiance.sdcpp.patch",
+      "sha256": "2f6e71b5704698a72fa9c59f956a49129fb8aef0a74ef30b39d2c296e0b0783c",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "098-hexagon-v69-stacks.ggml.patch",
+      "sha256": "92924d9ea214125347527094ba26f7d04dd650e0dccf94ca16627085b60b3325",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "upstream/dit/stable-diffusion.cpp.patch",
+      "sha256": "1e4ba6c2aa8e69f11b2392dac794eb379a8d699090e54bcf214f752a8b697add",
+      "applied": true,
+      "error": ""
+    },
+    {
+      "patch": "upstream/dit/ggml.patch",
+      "sha256": "0874052c199efb80fca447f0379908268cf083fd03e242784cbe88f497af2d7b",
+      "applied": true,
+      "error": ""
+    }
+  ],
+  "routing": {
+    "*.ggml.patch": "stable-diffusion.cpp/ggml root",
+    "*.sdcpp.patch": "stable-diffusion.cpp root",
+    "other": "local-dream root, --directory=app/src/main/cpp",
+    "upstream/dit/*": "CMake-time local-dream patches applied LAST to corresponding submodule"
+  },
+  "excluded": [
+    "001-lora-abi4.patch",
+    "002-lora-apply-mode-abi5.patch",
+    "033-hexagon-v85.ggml.patch",
+    "090-moss-rapid-sampler.sdcpp.patch",
+    "spike-*"
+  ]
+}

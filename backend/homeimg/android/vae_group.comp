@@ -1,0 +1,57 @@
+#version 450
+layout(local_size_x=64) in;
+layout(binding=0,std430) readonly buffer Input {float x[];};
+layout(binding=1,std430) readonly buffer Params {float params[];};
+layout(binding=2,std430) writeonly buffer Output {float y[];};
+layout(push_constant) uniform Shape {uint mode,rows,cols,offset;} s;
+shared vec2 moments[64];
+shared uint counts[64];
+void combine(inout vec2 a,inout uint n,vec2 b,uint m){
+    if(m==0)return;
+    float delta=b.x-a.x;
+    uint total=n+m;
+    a.y+=b.y+delta*delta*float(n)*float(m)/float(total);
+    a.x+=delta*(float(m)/float(total));
+    n=total;
+}
+void main(){
+    uint lane=gl_LocalInvocationIndex,group=gl_WorkGroupID.x,span=s.cols/32;
+    if(s.mode>=2){
+        uint row=gl_WorkGroupID.x;
+        for(uint c=lane;c<s.cols;c+=64){
+            uint g=c/span;
+            float n=(x[row*s.cols+c]-params[2*g])*params[2*g+1];
+            n=n*params[64+c]+params[64+s.cols+c];
+            y[row*s.cols+c]=s.mode==3?n/(1+exp(-n)):n;
+        }
+        return;
+    }
+    vec2 acc=vec2(0);uint count=0;
+    if(s.mode==0){
+        uint first=gl_WorkGroupID.y*256;
+        uint length=min(256,s.rows-first)*span;
+        for(uint i=lane;i<length;i+=64){
+            float val=x[(first+i/span)*s.cols+group*span+i%span];
+            count++;
+            float delta=val-acc.x;
+            acc.x+=delta/float(count);
+            acc.y+=delta*(val-acc.x);
+        }
+    }else{
+        for(uint block=lane;block<(s.rows+255)/256;block+=64){
+            uint id=(block*32+group)*2;
+            combine(acc,count,vec2(x[id],x[id+1]),min(256,s.rows-block*256)*span);
+        }
+    }
+    moments[lane]=acc;counts[lane]=count;
+    barrier();
+    for(uint stride=32;stride>0;stride/=2){
+        if(lane<stride)combine(moments[lane],counts[lane],moments[lane+stride],counts[lane+stride]);
+        barrier();
+    }
+    if(lane==0){
+        uint dest=s.mode==0?((s.offset+gl_WorkGroupID.y)*32+group)*2:group*2;
+        y[dest]=moments[0].x;
+        y[dest+1]=s.mode==0?moments[0].y:inversesqrt(max(moments[0].y/float(counts[0]),0)+1e-6);
+    }
+}

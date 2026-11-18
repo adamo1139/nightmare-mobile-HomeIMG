@@ -1,0 +1,33 @@
+#version 450
+layout(local_size_x=64) in;
+layout(binding=0,std430) readonly buffer Input {float x[];};
+layout(binding=1,std430) readonly buffer Extra {float b[];};
+layout(binding=2,std430) writeonly buffer Out {float y[];};
+layout(push_constant) uniform Shape {uint width,kind;float dt,cfg;} p;
+void main(){
+    uint col=gl_GlobalInvocationID.x;
+    if(col>=p.width)return;
+    uint idx=gl_WorkGroupID.y*p.width+col;
+    if(p.kind==1)y[idx]=x[idx]+b[p.width+idx]*b[col];
+    else if(p.kind==3)y[idx]=x[idx]+b[col];
+    else if(p.kind==4)y[idx]=x[idx]/(1+exp(-x[idx]));
+    else if(p.kind==5)y[idx]=x[idx]/(1+exp(-x[idx]))*b[idx];
+    else if(p.kind==7){
+        bool lm=p.cfg>1;uint rotary=lm?64:p.width;
+        if(col>=rotary){y[idx]=x[idx];return;}
+        uint pair=lm?col%(rotary/2):col/2;
+        uint a=lm?pair:2*pair, bcol=lm?pair+rotary/2:a+1;
+        float angle=float(gl_WorkGroupID.y+uint(p.dt))/pow(lm?84000.0:10000.0,2.0*pair/rotary);
+        float c=cos(angle),s=sin(angle);
+        float x0=x[gl_WorkGroupID.y*p.width+a],x1=x[gl_WorkGroupID.y*p.width+bcol];
+        y[idx]=col==a?x0*c-x1*s:x0*s+x1*c;
+    }
+    else {
+        float velocity=b[idx];
+        if(p.cfg!=1){
+            float neg=b[gl_NumWorkGroups.y*p.width+idx];
+            velocity=neg+p.cfg*(velocity-neg);
+        }
+        y[idx]=x[idx]+p.dt*velocity;
+    }
+}
