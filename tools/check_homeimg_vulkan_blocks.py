@@ -20,6 +20,11 @@ lib.homeimg_gpu_masked_attention.argtypes=[ptr]*4+[integer]*3+[scalar,ptr,intege
 lib.homeimg_gpu_group.argtypes=[ptr]*4+[integer]*3+[ptr]
 lib.homeimg_gpu_expert.argtypes=[ptr]*4+[integer]*3+[ptr]
 lib.homeimg_gpu_weights.argtypes=[ptr,ptr,C.c_size_t]
+class SelfInputs(C.Structure):
+    _fields_=[(name,integer) for name in ("side","heads","branches","reference")]+[
+        ("scale",scalar)]+[(name,ptr) for name in ("input","qkv","out","norm","gain","bias","gate","qnorm","knorm","result")]
+lib.homeimg_gpu_cross_heads.argtypes=[ptr,ptr,ptr,integer,integer,integer,scalar,ptr]
+lib.homeimg_gpu_self_block.argtypes=[ptr,C.POINTER(SelfInputs)]
 device=lib.homeimg_gpu_open()
 assert device
 rng=np.random.default_rng(49)
@@ -72,6 +77,34 @@ try:
     for head in range(heads):
         ref=attention(rotated(raw[:,0,head],nq),rotated(raw[:,1,head],nk),raw[:,2,head])
         np.testing.assert_allclose(y[:,head],ref,atol=1e-5,rtol=1e-4)
+    # Compare the complete fused operation against a composition that stages QKV and
+    # joined heads on the host. Use two different CFG inputs and a partial final tile.
+    side,heads,branches=17,3,2
+    d=heads*128
+    x=matrix(branches,side*side,d)
+    qkv_weight,out_weight=matrix(3*d,d),matrix(d,d)
+    norm,gain,bias,gate=matrix(4,d)
+    qnorm,knorm=matrix(2,128)
+    result=np.empty_like(x)
+    job=SelfInputs(side,heads,branches,64,128**-.5,
+                   *buffers(x,qkv_weight,out_weight,norm,gain,bias,gate,qnorm,knorm,result))
+    assert lib.homeimg_gpu_self_block(device,C.byref(job))
+    for branch in range(branches):
+        source=x[branch]
+        prepared=source/np.sqrt(np.mean(source**2,axis=1,keepdims=True)+1e-6)*norm*(1+gain)+bias
+        qkv=prepared@qkv_weight.T
+        joined=np.empty_like(source)
+        assert lib.homeimg_gpu_spatial(device,qkv.ctypes.data,side,heads,64,128**-.5,*buffers(qnorm,knorm,joined))
+        np.testing.assert_allclose(result[branch],source+(joined@out_weight.T)*gate,atol=2e-5,rtol=1e-4)
+    for rows,keys,heads in [(17,3,2),(39,77,3),(5,256,1),(4096,11,20)]:
+        query=matrix(rows,heads,128)
+        context=matrix(keys,2,heads,128)
+        joined=np.empty_like(query)
+        scale=128**-.5
+        assert lib.homeimg_gpu_cross_heads(device,*buffers(query,context),rows,keys,heads,scale,joined.ctypes.data)
+        for h in range(heads):
+            expected=attention(query[:,h],context[:,0,h],context[:,1,h])
+            np.testing.assert_allclose(joined[:,h],expected,atol=1e-5,rtol=1e-4)
     for rows,cols in [(65,64),(33031,128)]:
         x=matrix(rows,cols); w,b=matrix(2,cols)
         y=np.empty_like(x)
@@ -96,6 +129,6 @@ try:
             np.testing.assert_allclose(y,x@w.T,atol=1e-5,rtol=1e-4)
         lib.homeimg_gpu_weights(device,None,0)
         w[:]*=-1
-    print("MLP, convolution, causal/cross attention, spatial QKV and head joining passed")
+    print("MLP, convolution, causal/cross attention, spatial QKV, fused self-attention blocks and packed cross-attention passed")
 finally:
     lib.homeimg_gpu_close(device)

@@ -71,6 +71,21 @@ int homeimg_generate_blocks(const char *root,const char *prompt,const char *nega
                      uint8_t *rgb,size_t rgb_bytes,homeimg_progress progress,void *user,
                      char *error,size_t error_bytes,homeimg_projection project,void *backend,float time_shift,
                      const homeimg_device_ops *ops);
+// A complete Aurora self-attention sublayer, including adaptive norm and gated residual.
+// Weights are row-major. Inputs and output have [branches * side * side, heads * 128] elements.
+typedef struct {
+    int side,heads,branches,reference;
+    float attention_scale;
+    const float *input,*qkv_weight,*out_weight,*norm,*gain,*bias,*gate,*q_norm,*k_norm;
+    float *output;
+} homeimg_self_inputs;
+typedef int (*homeimg_self_block)(void*,const homeimg_self_inputs*);
+typedef int (*homeimg_cross_heads)(void*,const float*,const float*,int,int,int,float,float*);
+int homeimg_generate_attention_blocks(const char *root,const char *prompt,const char *negative,
+                     int side,int steps,float cfg,const float *noise,size_t noise_count,
+                     uint8_t *rgb,size_t rgb_bytes,homeimg_progress progress,void *user,
+                     char *error,size_t error_bytes,homeimg_projection project,void *backend,float time_shift,
+                     const homeimg_device_ops *ops,homeimg_self_block self_block,homeimg_cross_heads cross_heads);
 #ifdef __cplusplus
 }
 #endif

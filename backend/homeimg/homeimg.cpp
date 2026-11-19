@@ -9,9 +9,9 @@
 
 uint32_t homeimg_api_version(){return 1;}
 uint32_t homeimg_capabilities(){return 1;}
-int homeimg_generate_blocks(const char *root,const char *prompt,const char *negative,int side,int steps,float cfg,
+int homeimg_generate_attention_blocks(const char *root,const char *prompt,const char *negative,int side,int steps,float cfg,
                      const float *noise,size_t count,uint8_t *rgb,size_t bytes,homeimg_progress progress,
-                     void *user,char *error,size_t error_bytes,homeimg_projection project,void* backend,float shift,const homeimg_device_ops* operations){
+                     void *user,char *error,size_t error_bytes,homeimg_projection project,void* backend,float shift,const homeimg_device_ops* operations,homeimg_self_block selfBlock,homeimg_cross_heads crossHeads){
     if(error && error_bytes)error[0]=0;
     try{
         if(!root || !prompt || !negative || !noise || !rgb ||
@@ -29,7 +29,7 @@ int homeimg_generate_blocks(const char *root,const char *prompt,const char *nega
         const homeimg_device_ops ops=operations?*operations:homeimg_device_ops{};
         homeimg::AuroraConfig config;
         config.project=project;config.backend=backend;config.attention=ops.attention;
-        config.mlp=ops.mlp;config.cross=ops.cross;config.masked=ops.masked;config.spatial=ops.spatial;
+        config.selfBlock=selfBlock;config.crossHeads=crossHeads;config.mlp=ops.mlp;config.cross=ops.cross;config.masked=ops.masked;config.spatial=ops.spatial;
         config.rowop=ops.rowop;config.expert=ops.expert;config.weightScope=ops.weight_scope;
         if(!homeimg::sample(root,prompt,negative,side,steps,cfg,z,
                            [&](int n,const auto&){return advance(n);},config,shift))return 2;
@@ -45,6 +45,13 @@ int homeimg_generate_blocks(const char *root,const char *prompt,const char *nega
         if(error && error_bytes)std::snprintf(error,error_bytes,"unexpected HomeIMG failure");
         return 1;
     }
+}
+
+int homeimg_generate_blocks(const char *root,const char *prompt,const char *negative,int side,int steps,float cfg,
+                     const float *noise,size_t count,uint8_t *rgb,size_t bytes,homeimg_progress progress,
+                     void *user,char *error,size_t error_bytes,homeimg_projection project,void* backend,float shift,const homeimg_device_ops* operations){
+    return homeimg_generate_attention_blocks(root,prompt,negative,side,steps,cfg,noise,count,rgb,bytes,
+        progress,user,error,error_bytes,project,backend,shift,operations,nullptr,nullptr);
 }
 
 int homeimg_generate_accelerated(const char *root,const char *prompt,const char *negative,int side,int steps,float cfg,

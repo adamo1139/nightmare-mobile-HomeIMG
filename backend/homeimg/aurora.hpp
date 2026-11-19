@@ -14,7 +14,7 @@
 namespace homeimg {
 using Matrix = Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor>;
 using Weights = std::map<std::string, Matrix>;
-struct AuroraConfig { int heads=20, depth=12, rope_ref=64, micro_cond=256; homeimg_projection project=nullptr; void* backend=nullptr; homeimg_attention attention=nullptr; homeimg_mlp mlp=nullptr; homeimg_cross cross=nullptr; homeimg_masked_attention masked=nullptr; homeimg_spatial spatial=nullptr; homeimg_rowop rowop=nullptr; homeimg_expert expert=nullptr; homeimg_weight_scope weightScope=nullptr; };
+struct AuroraConfig { int heads=20, depth=12, rope_ref=64, micro_cond=256; homeimg_projection project=nullptr; void* backend=nullptr; homeimg_attention attention=nullptr; homeimg_mlp mlp=nullptr; homeimg_cross cross=nullptr; homeimg_masked_attention masked=nullptr; homeimg_spatial spatial=nullptr; homeimg_rowop rowop=nullptr; homeimg_expert expert=nullptr; homeimg_weight_scope weightScope=nullptr; homeimg_self_block selfBlock=nullptr; homeimg_cross_heads crossHeads=nullptr; };
 
 inline Matrix silu(const Matrix& x) {
     return x.array() / (1.f + (-x.array()).exp());
@@ -165,7 +165,22 @@ inline Matrix aurora_velocity(const WeightStore& w,const AuroraConfig& cfg,const
         auto conditioned=[&](const std::string& name,int offset)->Matrix {
             return normalize(x,p+name+".weight",mod.row(offset+1).data(),mod.row(offset).data());
         };
-        {
+        bool selfDone=false;
+        if(cfg.selfBlock && hd==128){
+            Matrix output(x.rows(),d);
+            const auto& qkv=w.at(p+"attn.qkv.weight");
+            const auto& out=w.at(p+"attn.out.weight");
+            if(qkv.rows()==3*d && qkv.cols()==d && out.rows()==d && out.cols()==d){
+                homeimg_self_inputs job{side,cfg.heads,int(x.rows()/latent.rows()),cfg.rope_ref,
+                    self_scale/std::sqrt(float(hd)),x.data(),qkv.data(),out.data(),
+                    w.at(p+"norm1.weight").data(),mod.row(1).data(),mod.row(0).data(),
+                    mod.row(2).data(),w.at(p+"attn.q_norm.weight").data(),
+                    w.at(p+"attn.k_norm.weight").data(),output.data()};
+                selfDone=cfg.selfBlock(cfg.backend,&job)!=0;
+                if(selfDone)x.swap(output);
+            }
+        }
+        if(!selfDone){
             Matrix joined(x.rows(),d);
             Matrix qkv=project(conditioned("norm1",0),p+"attn.qkv");
             // Every image has its own softmax and rotary positions even when the
@@ -218,14 +233,17 @@ inline Matrix aurora_velocity(const WeightStore& w,const AuroraConfig& cfg,const
             }else{
                 Matrix q=project(normalize(branch,p+"norm2.weight"),p+"cross.q");
                 Matrix joined(tokens,d);
-                attention_heads(cfg.heads,tokens,!cfg.cross,[&](int head){
+                float crossScale=1.f/std::sqrt(float(hd));
+                bool allHeads=cfg.crossHeads && hd==128 &&
+                    cfg.crossHeads(cfg.backend,q.data(),context.data(),tokens,context.rows(),cfg.heads,
+                                   crossScale,joined.data());
+                if(!allHeads)attention_heads(cfg.heads,tokens,!cfg.cross,[&](int head){
                     int j=head*hd;
                     Matrix query=q.middleCols(j,hd),key=context.middleCols(j,hd),value=context.middleCols(d+j,hd);
-                    float scale=1.f/std::sqrt(float(hd));
                     Matrix attended(tokens,hd);
                     if(!cfg.cross || !cfg.cross(cfg.backend,query.data(),key.data(),value.data(),
-                            tokens,context.rows(),hd,scale,attended.data()))
-                        attended=attention(query,key,value,scale);
+                            tokens,context.rows(),hd,crossScale,attended.data()))
+                        attended=attention(query,key,value,crossScale);
                     joined.middleCols(j,hd)=attended;
                 });
                 residual(branch,project(joined,p+"cross.out"),nullptr);

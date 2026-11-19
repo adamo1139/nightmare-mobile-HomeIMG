@@ -19,6 +19,8 @@ extern "C" void homeimg_gpu_weights(void*,const void*,size_t);
 extern "C" int homeimg_gpu_group(void*,const float*,const float*,const float*,int,int,int,float*);
 extern "C" int homeimg_gpu_expert(void*,const float*,const int8_t*,const float*,int,int,int,float*);
 extern "C" int homeimg_gpu_rows(void*,const homeimg_rows*);
+extern "C" int homeimg_gpu_cross_heads(void*,const float*,const float*,int,int,int,float,float*);
+extern "C" int homeimg_gpu_self_block(void*,const homeimg_self_inputs*);
 extern "C" int homeimg_gpu_spatial(void*,const float*,int,int,int,float,const float*,const float*,float*);
 extern "C" int homeimg_gpu_conv(void*,const float*,const float*,int,int,int,int,float*);
 extern "C" int homeimg_gpu_mlp(void*,float*,int,int,int,const float*,const float*,const float*,const float*,const float*,const float*);
@@ -109,6 +111,26 @@ struct Accelerator {
     static int rows(void* ctx,const homeimg_rows* op){
         return homeimg_gpu_rows(static_cast<Accelerator*>(ctx)->backend,op);
     }
+    int selfBlocks=0,selfRetries=0;
+    long long selfMicros=0;
+    static int selfBlock(void* ctx,const homeimg_self_inputs* job){
+        auto& self=*static_cast<Accelerator*>(ctx);
+        auto start=std::chrono::steady_clock::now();
+        int ok=homeimg_gpu_self_block(self.backend,job);
+        self.selfMicros+=std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now()-start).count();
+        if(ok)++self.selfBlocks;else ++self.selfRetries;
+        return ok;
+    }
+    static int crossHeads(void* ctx,const float* q,const float* kv,int rows,int keys,int heads,float scale,float* y){
+        auto& self=*static_cast<Accelerator*>(ctx);
+        auto start=std::chrono::steady_clock::now();
+        int ok=homeimg_gpu_cross_heads(self.backend,q,kv,rows,keys,heads,scale,y);
+        self.attentionMicros+=std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now()-start).count();
+        if(ok)self.attentionHits+=heads;
+        return ok;
+    }
     static int spatial(void* ctx,const float* qkv,int side,int heads,int ref,float scale,const float* nq,const float* nk,float* y){
         auto& self=*static_cast<Accelerator*>(ctx);
         auto start=std::chrono::steady_clock::now();
@@ -180,7 +202,8 @@ struct Accelerator {
 };
 struct Callback {JNIEnv* env; jobject target; jmethodID method,profile; Accelerator& accelerator;
     std::chrono::steady_clock::time_point since{};
-    long long projections=0,attention=0,mlp=0;};
+    long long projections=0,attention=0,mlp=0,selfMicros=0;
+    int selfBlocks=0,selfRetries=0;};
 int advance(void* user,int done,int total){
     auto& cb=*static_cast<Callback*>(user);
     auto now=std::chrono::steady_clock::now();
@@ -189,13 +212,15 @@ int advance(void* user,int done,int total){
         cb.env->CallVoidMethod(cb.target,cb.profile,done,jlong(duration),
             jlong((cb.accelerator.micros-cb.projections)/1000),
             jlong((cb.accelerator.attentionMicros-cb.attention)/1000),
-            jlong((cb.accelerator.mlpMicros-cb.mlp)/1000));
+            jlong((cb.accelerator.mlpMicros-cb.mlp)/1000),jlong((cb.accelerator.selfMicros-cb.selfMicros)/1000),
+            cb.accelerator.selfBlocks-cb.selfBlocks,cb.accelerator.selfRetries-cb.selfRetries);
         if(cb.env->ExceptionCheck())return 0;
     }
     cb.since=now;
     cb.projections=cb.accelerator.micros;
     cb.attention=cb.accelerator.attentionMicros;
     cb.mlp=cb.accelerator.mlpMicros;
+    cb.selfMicros=cb.accelerator.selfMicros;cb.selfBlocks=cb.accelerator.selfBlocks;cb.selfRetries=cb.accelerator.selfRetries;
     if(done==total && cb.accelerator.close!=homeimg_gpu_close)cb.accelerator.release();
     bool proceed=cb.env->CallBooleanMethod(cb.target,cb.method,done,total);
     return !cb.env->ExceptionCheck() && proceed;
@@ -222,7 +247,7 @@ Java_com_abrah_nightmare_homeimg_HomeImgActivity_generate(JNIEnv* env,jobject ac
 
         char error[512]{};
         Accelerator accelerator;
-        auto profile=env->GetMethodID(cls,"stepProfile","(IJJJJ)V");
+        auto profile=env->GetMethodID(cls,"stepProfile","(IJJJJJII)V");
         if(!profile)return nullptr;
         Callback cb{env,activity,method,profile,accelerator};
         accelerator.env=env;
@@ -243,9 +268,10 @@ Java_com_abrah_nightmare_homeimg_HomeImgActivity_generate(JNIEnv* env,jobject ac
             ops.rowop=Accelerator::rows;ops.expert=Accelerator::expert;
             ops.group=Accelerator::group;ops.weight_scope=Accelerator::weights;
         }
-        int status=homeimg_generate_blocks(root.c_str(),prompt.c_str(),neg.c_str(),side,steps,cfg,
+        int status=homeimg_generate_attention_blocks(root.c_str(),prompt.c_str(),neg.c_str(),side,steps,cfg,
             noise.data(),noise.size(),rgb.data(),rgb.size(),advance,&cb,error,sizeof(error),
-            accelerator.backend?Accelerator::run:nullptr,&accelerator,shift,&ops);
+            accelerator.backend?Accelerator::run:nullptr,&accelerator,shift,&ops,
+            gpu && gpuAttention?Accelerator::selfBlock:nullptr,gpu?Accelerator::crossHeads:nullptr);
         accelerator.release();
         struct rusage usage{};
         getrusage(RUSAGE_SELF,&usage);

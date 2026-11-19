@@ -1,0 +1,15 @@
+#version 450
+// Q [rows, heads, 128], context [keys, 2, heads, 128].
+layout(local_size_x=8,local_size_y=8) in;
+layout(binding=0,std430) readonly buffer Queries {vec4 q[];};
+layout(binding=1,std430) readonly buffer Context {vec4 kv[];};
+layout(binding=2,std430) writeonly buffer Scores {float scores[];};
+layout(push_constant) uniform Shape {uint rows,keys,heads;float scale;} p;
+void main(){
+    uint key=gl_GlobalInvocationID.x,row=gl_GlobalInvocationID.y,head=gl_WorkGroupID.z;
+    if(key>=p.keys || row>=p.rows)return;
+    uint qi=(row*p.heads+head)*32,ki=(2*key*p.heads+head)*32;
+    float sum=0;
+    for(uint i=0;i<32;++i)sum+=dot(q[qi+i],kv[ki+i]);
+    scores[(row*p.heads+head)*p.keys+key]=sum*p.scale;
+}

@@ -45,7 +45,7 @@
 -keep class com.abrah.nightmare.homeimg.HomeImgActivity {
     native <methods>;
     boolean progress(int,int);
-    void stepProfile(int,long,long,long,long);
+    void stepProfile(int,long,long,long,long,long,int,int);
     void backendNotice(java.lang.String);
     void projectionStatus(int,int,boolean);
     void backendSummary(int,int,long,long,long,int,int,long,int,int,long);

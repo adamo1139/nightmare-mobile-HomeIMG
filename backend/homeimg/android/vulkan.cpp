@@ -50,6 +50,12 @@ const uint32_t groupCode[]={
 const uint32_t routeCode[]={
 #include "moe_route.inc"
 };
+const uint32_t crossScoreCode[]={
+#include "cross_scores.inc"
+};
+const uint32_t crossValueCode[]={
+#include "cross_values.inc"
+};
 struct VulkanError : std::runtime_error {
     VkResult code;
     VulkanError(VkResult result,const char* operation):std::runtime_error(
@@ -67,7 +73,7 @@ struct Device {
     VkPipelineLayout layout{};
     VkPipeline pipeline{};
     VkPipeline alignedPipeline{};
-    VkPipeline softmax{},norm{},gate{},residual{},patch{},prepare{},join{},rowUpdate{},expert{},groupNorm{},route{};
+    VkPipeline softmax{},norm{},gate{},residual{},patch{},prepare{},join{},rowUpdate{},expert{},groupNorm{},route{},crossScores{},crossValues{};
     VkDescriptorSet mlpSets[6]{};
     VkDescriptorSet attentionSets[3]{};
     VkFence fence{};
@@ -125,6 +131,8 @@ struct Device {
         expert=createPipeline(expertCode,sizeof(expertCode));
         groupNorm=createPipeline(groupCode,sizeof(groupCode));
         route=createPipeline(routeCode,sizeof(routeCode));
+        crossScores=createPipeline(crossScoreCode,sizeof(crossScoreCode));
+        crossValues=createPipeline(crossValueCode,sizeof(crossValueCode));
         VkFenceCreateInfo fc{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
         check(vkCreateFence(device,&fc,nullptr,&fence));
         VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,30};
@@ -161,7 +169,7 @@ struct Device {
         if(device){
             vkDestroyCommandPool(device,commands,nullptr);vkDestroyDescriptorPool(device,descriptors,nullptr);
             vkDestroyPipeline(device,pipeline,nullptr);vkDestroyPipeline(device,alignedPipeline,nullptr);
-            for(auto p:{softmax,norm,gate,residual,patch,prepare,join,rowUpdate,expert,groupNorm,route})vkDestroyPipeline(device,p,nullptr);
+            for(auto p:{softmax,norm,gate,residual,patch,prepare,join,rowUpdate,expert,groupNorm,route,crossScores,crossValues})vkDestroyPipeline(device,p,nullptr);
             vkDestroyFence(device,fence,nullptr);
             vkDestroyPipelineLayout(device,layout,nullptr);vkDestroyDescriptorSetLayout(device,bindings,nullptr);
             vkDestroyDevice(device,nullptr);
@@ -258,16 +266,22 @@ struct Buffer {
     }
 };
 // Destroy mapped scratch buffers before the device they belong to.
+static VkDescriptorBufferInfo range(Buffer& buffer,size_t offset=0,size_t bytes=0){
+    return {buffer.buffer,offset,bytes?bytes:buffer.capacity-offset};
+}
+static void bindRanges(Device& d,int index,VkDescriptorBufferInfo a,VkDescriptorBufferInfo b,VkDescriptorBufferInfo c){
+    VkDescriptorBufferInfo info[]={a,b,c};
+    VkWriteDescriptorSet writes[3]{};
+    for(uint32_t i=0;i<3;++i){
+        writes[i].sType=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[i].dstSet=d.mlpSets[index];writes[i].dstBinding=i;
+        writes[i].descriptorCount=1;writes[i].descriptorType=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        writes[i].pBufferInfo=info+i;
+    }
+    vkUpdateDescriptorSets(d.device,3,writes,0,nullptr);
+}
 void bind(Device& d,int index,Buffer& a,Buffer& b,Buffer& c){
-            VkDescriptorBufferInfo info[]={{a.buffer,0,a.capacity},{b.buffer,0,b.capacity},{c.buffer,0,c.capacity}};
-            VkWriteDescriptorSet writes[3]{};
-            for(uint32_t j=0;j<3;++j){
-                writes[j].sType=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                writes[j].dstSet=d.mlpSets[index];writes[j].dstBinding=j;
-                writes[j].descriptorCount=1;writes[j].descriptorType=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-                writes[j].pBufferInfo=info+j;
-            }
-            vkUpdateDescriptorSets(d.device,3,writes,0,nullptr);
+    bindRanges(d,index,range(a),range(b),range(c));
 }
 struct Session {
     Device device;
@@ -427,7 +441,7 @@ extern "C" int homeimg_gpu_project(void* p,const float* x,const float* w,int tok
 // A single submission computes QK^T, stable row softmax and probabilities times V.
 // The scratch matrix is tiled by query row; the key axis always spans the entire head.
 static int gpuAttention(void* handle,const float* q,const float* k,const float* v,
-                                    int tokens,int keys,int width,float scale,float* y,int causal,Buffer* joined=nullptr,int head=0,int dim=0){
+                                    int tokens,int keys,int width,float scale,float* y,int causal,Buffer* joined=nullptr,int head=0,int dim=0,int side=0,int reference=0){
     if(!handle || keys<=0 || tokens<=0 || width<=0)return 0;
     auto& gpu=*static_cast<Gpu*>(handle);
     if(!gpu.session)return 0;
@@ -473,6 +487,15 @@ static int gpuAttention(void* handle,const float* q,const float* k,const float* 
             int n=std::min(tile,tokens-r);
             bind(0,0,s.input.buffer,size_t(r)*width*4,size_t(n)*width*4);
             d.beginCommands();
+            if(joined && r==0){
+                int shape[]={side,dim,head,reference};
+                vkCmdBindPipeline(d.cmd,VK_PIPELINE_BIND_POINT_COMPUTE,d.prepare);
+                vkCmdBindDescriptorSets(d.cmd,VK_PIPELINE_BIND_POINT_COMPUTE,d.layout,0,1,&d.mlpSets[0],0,nullptr);
+                vkCmdPushConstants(d.cmd,d.layout,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(shape),shape);
+                vkCmdDispatch(d.cmd,tokens,1,1);
+                d.computeBarrier();
+                ++s.dispatches;
+            }
             d.multiply(d.attentionSets[0],n,width,keys);
             d.computeBarrier();
             vkCmdBindPipeline(d.cmd,VK_PIPELINE_BIND_POINT_COMPUTE,d.softmax);
@@ -489,6 +512,7 @@ static int gpuAttention(void* handle,const float* q,const float* k,const float* 
                 int shape[]={dim,head,r};
                 vkCmdPushConstants(d.cmd,d.layout,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(shape),shape);
                 vkCmdDispatch(d.cmd,n,1,1);
+                d.computeBarrier();
             }
             d.finishCommands();
             s.dispatches+=joined?4:3;
@@ -503,6 +527,21 @@ extern "C" int homeimg_gpu_masked_attention(void* handle,const float* q,const fl
                                     int tokens,int keys,int width,float scale,float* y,int causal){
     return gpuAttention(handle,q,k,v,tokens,keys,width,scale,y,causal);
 }
+// Raw QKV and the concatenated head output stay in their device buffers.
+static bool spatialHeads(Gpu& gpu,Buffer& raw,Buffer& weights,Buffer& joined,
+                         int side,int heads,int ref,float scale){
+    auto& s=*gpu.session;
+    int tokens=side*side;
+    size_t headBytes=size_t(tokens)*128*4;
+    if(headBytes%s.device.properties.limits.minStorageBufferOffsetAlignment)return false;
+    s.input.reserve(headBytes*3,0);
+    bind(s.device,0,raw,weights,s.input);
+    for(int head=0;head<heads;++head){
+        if(!gpuAttention(&gpu,nullptr,nullptr,nullptr,tokens,tokens,128,scale,nullptr,0,
+                         &joined,head,heads*128,side,ref))return false;
+    }
+    return true;
+}
 extern "C" int homeimg_gpu_spatial(void* handle,const float* qkv,int side,int heads,int ref,float scale,
                                    const float* nq,const float* nk,float* output){
     auto& gpu=*static_cast<Gpu*>(handle);
@@ -516,25 +555,129 @@ extern "C" int homeimg_gpu_spatial(void* handle,const float* qkv,int side,int he
     try{
         Buffer raw(d),weights(d),joined(d);
         raw.reserve(bytes*3);weights.reserve(256*4);joined.reserve(bytes);
-        s.input.reserve(headBytes*3,0);
         std::memcpy(raw.data,qkv,bytes*3);std::memcpy(weights.data,nq,128*4);
         std::memcpy(static_cast<float*>(weights.data)+128,nk,128*4);
-        bind(d,0,raw,weights,s.input);
-        for(int head=0;head<heads;++head){
-            int shape[]={side,dim,head,ref};
-            d.beginCommands();
-            vkCmdBindPipeline(d.cmd,VK_PIPELINE_BIND_POINT_COMPUTE,d.prepare);
-            vkCmdBindDescriptorSets(d.cmd,VK_PIPELINE_BIND_POINT_COMPUTE,d.layout,0,1,&d.mlpSets[0],0,nullptr);
-            vkCmdPushConstants(d.cmd,d.layout,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(shape),shape);
-            vkCmdDispatch(d.cmd,tokens,1,1);
-            d.computeBarrier();
-            d.finishCommands();++s.dispatches;
-            if(!gpuAttention(handle,nullptr,nullptr,nullptr,tokens,tokens,128,scale,nullptr,0,&joined,head,dim))
-                return 0;
-        }
+        if(!spatialHeads(gpu,raw,weights,joined,side,heads,ref,scale))return 0;
         std::memcpy(output,joined.data,bytes);
         return std::all_of(output,output+bytes/4,[](float v){return std::isfinite(v);});
     }catch(...){return 0;}
+}
+extern "C" int homeimg_gpu_self_block(void* handle,const homeimg_self_inputs* job){
+    if(!handle || !job || job->side<1 || job->side>64 || job->heads<1 || job->heads>64 ||
+       job->branches<1 || job->branches>2)return 0;
+    auto& gpu=*static_cast<Gpu*>(handle);
+    if(!gpu.session)return 0;
+    auto& s=*gpu.session;
+    auto& d=s.device;
+    const int tokens=job->side*job->side,width=job->heads*128;
+    const size_t rowBytes=size_t(width)*4,activation=tokens*rowBytes,weightBytes=width*rowBytes;
+    if(3*std::max(activation,weightBytes)>s.storageLimit ||
+       (size_t(tokens)*128*4)%d.properties.limits.minStorageBufferOffsetAlignment)return 0;
+    try{
+        Buffer localQkv(d),localOut(d),input(d),raw(d),joined(d),tileBuffer(d),params(d),qkNorm(d);
+        auto stage=[&](Buffer& local,const float* src,size_t bytes)->Buffer&{
+            if(auto* cached=s.cached(src,bytes))return *cached;
+            local.reserve(bytes);
+            std::memcpy(local.data,src,bytes);
+            return local;
+        };
+        Buffer& qkvWeight=stage(localQkv,job->qkv_weight,3*weightBytes);
+        Buffer& outWeight=stage(localOut,job->out_weight,weightBytes);
+        input.reserve(activation);raw.reserve(3*activation);joined.reserve(activation);
+        params.reserve(4*rowBytes);qkNorm.reserve(256*4);
+        size_t slot=0;
+        for(auto src:{job->norm,job->gain,job->bias,job->gate})
+            std::memcpy(static_cast<float*>(params.data)+width*slot++,src,rowBytes);
+        std::memcpy(qkNorm.data,job->q_norm,128*4);
+        std::memcpy(static_cast<float*>(qkNorm.data)+128,job->k_norm,128*4);
+        auto rowsPerTile=[&](int outputs){
+            int rows=std::min<uint64_t>(tokens,std::max<uint64_t>(32,s.macLimit/(uint64_t(width)*outputs)));
+            return rows>=32?rows/32*32:rows;
+        };
+        int qkvRows=rowsPerTile(3*width),outRows=rowsPerTile(width);
+        tileBuffer.reserve(rowBytes*std::max(qkvRows,outRows));
+        if(size_t(32)*rowBytes%d.properties.limits.minStorageBufferOffsetAlignment)return 0;
+        auto elementwise=[&](int set,VkPipeline pipeline,int groupsX,int groupsY){
+            vkCmdBindPipeline(d.cmd,VK_PIPELINE_BIND_POINT_COMPUTE,pipeline);
+            vkCmdBindDescriptorSets(d.cmd,VK_PIPELINE_BIND_POINT_COMPUTE,d.layout,0,1,&d.mlpSets[set],0,nullptr);
+            vkCmdPushConstants(d.cmd,d.layout,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(width),&width);
+            vkCmdDispatch(d.cmd,groupsX,groupsY,1);
+        };
+        for(int branch=0;branch<job->branches;++branch){
+            size_t base=size_t(branch)*tokens*width;
+            std::memcpy(input.data,job->input+base,activation);
+            for(int r=0;r<tokens;r+=qkvRows){
+                int n=std::min(qkvRows,tokens-r);
+                size_t offset=r*rowBytes,bytes=n*rowBytes;
+                bindRanges(d,2,range(input,offset,bytes),range(params),range(tileBuffer,0,bytes));
+                bindRanges(d,3,range(tileBuffer,0,bytes),range(qkvWeight),range(raw,3*offset,3*bytes));
+                d.beginCommands();
+                elementwise(2,d.norm,n,1);
+                d.computeBarrier();
+                d.multiply(d.mlpSets[3],n,width,3*width);
+                d.computeBarrier();
+                d.finishCommands();s.dispatches+=2;
+            }
+            if(!spatialHeads(gpu,raw,qkNorm,joined,job->side,job->heads,job->reference,
+                             job->attention_scale))return 0;
+            for(int r=0;r<tokens;r+=outRows){
+                int n=std::min(outRows,tokens-r);
+                size_t offset=r*rowBytes,bytes=n*rowBytes;
+                bindRanges(d,2,range(joined,offset,bytes),range(outWeight),range(tileBuffer,0,bytes));
+                bindRanges(d,3,range(input,offset,bytes),range(params),range(tileBuffer,0,bytes));
+                d.beginCommands();
+                d.multiply(d.mlpSets[2],n,width,width);
+                d.computeBarrier();
+                elementwise(3,d.residual,(width+63)/64,n);
+                d.finishCommands();s.dispatches+=2;
+                std::memcpy(job->output+base+size_t(r)*width,tileBuffer.data,bytes);
+            }
+        }
+        return std::all_of(job->output,job->output+size_t(job->branches)*tokens*width,
+                           [](float v){return std::isfinite(v);});
+    }catch(const std::exception& error){gpu.diagnostic=error.what();return 0;}
+    catch(const StoragePressure&){gpu.diagnostic="Vulkan self-attention block allocation failed";return 0;}
+}
+// Cross-attention over packed heads. Each tile reads the same uploaded text K/V.
+extern "C" int homeimg_gpu_cross_heads(void* handle,const float* q,const float* kv,int rows,
+                                       int keys,int heads,float scale,float* y){
+    if(!handle || rows<=0 || keys<=0 || keys>256 || heads<=0 || heads>64)return 0;
+    auto& gpu=*static_cast<Gpu*>(handle);
+    if(!gpu.session)return 0;
+    try{
+        auto& s=*gpu.session;
+        auto& d=s.device;
+        size_t rowBytes=size_t(heads)*128*4,scoreRow=size_t(heads)*keys*4;
+        size_t contextBytes=2*keys*rowBytes;
+        if(contextBytes>s.storageLimit)return 0;
+        int tile=std::min<uint64_t>({uint64_t(rows),65535,s.storageLimit/std::max(rowBytes,scoreRow),
+                               std::max<uint64_t>(1,s.macLimit/(2ull*128*keys*heads))});
+        if(!tile)return 0;
+        Buffer scores(d);
+        scores.reserve(tile*scoreRow);
+        s.weight.reserve(contextBytes,1);s.input.reserve(tile*rowBytes,0);s.result.reserve(tile*rowBytes,2);
+        std::memcpy(s.weight.data,kv,contextBytes);
+        bind(d,0,s.input,s.weight,scores);bind(d,1,scores,s.weight,s.result);
+        for(int r=0;r<rows;r+=tile){
+            int n=std::min(tile,rows-r);
+            size_t offset=size_t(r)*heads*128,bytes=n*rowBytes;
+            std::memcpy(s.input.data,q+offset,bytes);
+            struct {int rows,keys,heads;float scale;} shape{n,keys,heads,scale};
+            d.beginCommands();
+            vkCmdPushConstants(d.cmd,d.layout,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(shape),&shape);
+            vkCmdBindPipeline(d.cmd,VK_PIPELINE_BIND_POINT_COMPUTE,d.crossScores);
+            vkCmdBindDescriptorSets(d.cmd,VK_PIPELINE_BIND_POINT_COMPUTE,d.layout,0,1,&d.mlpSets[0],0,nullptr);
+            vkCmdDispatch(d.cmd,(keys+7)/8,(n+7)/8,heads);
+            d.computeBarrier();
+            vkCmdBindPipeline(d.cmd,VK_PIPELINE_BIND_POINT_COMPUTE,d.crossValues);
+            vkCmdBindDescriptorSets(d.cmd,VK_PIPELINE_BIND_POINT_COMPUTE,d.layout,0,1,&d.mlpSets[1],0,nullptr);
+            vkCmdDispatch(d.cmd,n,heads,1);
+            d.finishCommands();s.dispatches+=2;
+            std::memcpy(y+offset,s.result.data,bytes);
+        }
+        return std::all_of(y,y+size_t(rows)*heads*128,[](float v){return std::isfinite(v);});
+    }catch(const std::exception& e){gpu.diagnostic=e.what();return 0;}
+    catch(const StoragePressure&){gpu.diagnostic="Vulkan cross-attention allocation failed";return 0;}
 }
 extern "C" int homeimg_gpu_cross(void* handle,const float* q,const float* k,const float* v,
                                  int tokens,int keys,int width,float scale,float* y){

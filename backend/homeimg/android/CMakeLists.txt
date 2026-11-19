@@ -16,7 +16,7 @@ target_link_options(homeimg_cpu PRIVATE -fopenmp -static-openmp)
 target_link_libraries(homeimg_cpu PRIVATE log dl)
 
 find_program(HOMEIMG_GLSLC glslc HINTS "${CMAKE_ANDROID_NDK}/shader-tools/linux-x86_64" "${CMAKE_ANDROID_NDK}/shader-tools/darwin-x86_64" "${CMAKE_ANDROID_NDK}/shader-tools/windows-x86_64" REQUIRED NO_CMAKE_FIND_ROOT_PATH)
-foreach(kernel projection projection_aligned attention_softmax mlp_norm mlp_gate mlp_residual vae_patch spatial_prepare spatial_join row_update moe_expert vae_group moe_route)
+foreach(kernel projection projection_aligned attention_softmax mlp_norm mlp_gate mlp_residual vae_patch spatial_prepare spatial_join row_update moe_expert vae_group moe_route cross_scores cross_values)
     add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${kernel}.inc"
         COMMAND "${HOMEIMG_GLSLC}" -O -mfmt=num "${CMAKE_CURRENT_SOURCE_DIR}/${kernel}.comp" -o "${CMAKE_CURRENT_BINARY_DIR}/${kernel}.inc"
         DEPENDS "${kernel}.comp" VERBATIM)

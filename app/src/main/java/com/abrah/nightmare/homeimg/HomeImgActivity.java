@@ -34,11 +34,13 @@ public final class HomeImgActivity extends Activity {
     private String backend="CPU";
     private TextView backendDetails,stepTimes;
     private CheckBox gpuAttention;
-    private void stepProfile(int step,long total,long projections,long attention,long mlp){
+    private void stepProfile(int step,long total,long projections,long attention,long mlp,long selfMillis,int selfBlocks,int retries){
         String text=String.format(java.util.Locale.ROOT,
             "Step %d: %.1f s · accelerator projections %.1f s · GPU attention %.1f s · GPU MLP %.1f s%s",
             step,total/1000.,projections/1000.,attention/1000.,mlp/1000.,step==1?" (includes prompt)":"");
-        runOnUiThread(()->{if(!stopped){stepTimes.setText(text);stepTimes.setVisibility(View.VISIBLE);}});
+        String self=selfBlocks+retries==0?"":String.format(java.util.Locale.ROOT,
+            " · GPU self-attention blocks %.1f s (%d fused, %d fallback)",selfMillis/1000.,selfBlocks,retries);
+        runOnUiThread(()->{if(!stopped){stepTimes.setText(text+self);stepTimes.setVisibility(View.VISIBLE);}});
     }
     private void showGpuAttention(){
         if(resolution!=null && gpuAttention!=null)

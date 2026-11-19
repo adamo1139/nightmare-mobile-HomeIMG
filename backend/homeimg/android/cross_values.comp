@@ -1,0 +1,26 @@
+#version 450
+layout(local_size_x=64) in;
+layout(binding=0,std430) readonly buffer Scores {float scores[];};
+layout(binding=1,std430) readonly buffer Context {vec2 kv[];};
+layout(binding=2,std430) writeonly buffer Joined {vec2 joined[];};
+layout(push_constant) uniform Shape {uint rows,keys,heads;float scale;} p;
+shared float probs[256],partial[64];
+void main(){
+    uint row=gl_WorkGroupID.x,head=gl_WorkGroupID.y,lane=gl_LocalInvocationIndex;
+    uint base=(row*p.heads+head)*p.keys;
+    float m=-3.402823e38;
+    for(uint k=lane;k<p.keys;k+=64){probs[k]=scores[base+k];m=max(m,probs[k]);}
+    partial[lane]=m;barrier();
+    for(uint n=32;n>0;n/=2){if(lane<n)partial[lane]=max(partial[lane],partial[lane+n]);barrier();}
+    m=partial[0];barrier();
+    float sum=0;
+    for(uint k=lane;k<p.keys;k+=64){probs[k]=exp(probs[k]-m);sum+=probs[k];}
+    partial[lane]=sum;barrier();
+    for(uint n=32;n>0;n/=2){if(lane<n)partial[lane]+=partial[lane+n];barrier();}
+    float inv=1/partial[0];
+    for(uint k=lane;k<p.keys;k+=64)probs[k]*=inv;
+    barrier();
+    vec2 value=vec2(0);
+    for(uint k=0;k<p.keys;++k)value+=probs[k]*kv[((2*k+1)*p.heads+head)*64+lane];
+    joined[(row*p.heads+head)*64+lane]=value;
+}
